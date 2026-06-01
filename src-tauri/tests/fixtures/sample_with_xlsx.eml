@@ -1,0 +1,21 @@
+MIME-Version: 1.0
+Message-ID: <golden-002@fixtures.test>
+From: Alice Test <alice@fixtures.test>
+To: Bob Test <bob@fixtures.test>
+Date: Mon, 01 Jan 2024 11:00:00 +0000
+Subject: Golden EML fixture with XLSX
+Content-Type: multipart/mixed; boundary="fixture-002"
+
+--fixture-002
+Content-Type: text/plain; charset=utf-8
+
+Golden EML fixture with XLSX attachment.
+
+--fixture-002
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; name="data.xlsx"
+Content-Disposition: attachment; filename="data.xlsx"
+Content-Transfer-Encoding: base64
+
+Z29sZGVuLXhsc3gtY29udGVudA==
+
+--fixture-002--

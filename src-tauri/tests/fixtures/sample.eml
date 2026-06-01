@@ -1,0 +1,22 @@
+MIME-Version: 1.0
+Message-ID: <golden-001@fixtures.test>
+From: Alice Test <alice@fixtures.test>
+To: Bob Test <bob@fixtures.test>
+Date: Mon, 01 Jan 2024 10:00:00 +0000
+Subject: Golden EML fixture
+Content-Type: multipart/mixed; boundary="fixture-001"
+
+--fixture-001
+Content-Type: text/plain; charset=utf-8
+
+Golden EML fixture body text.
+This line is normal.
+
+--fixture-001
+Content-Type: application/pdf; name="report.pdf"
+Content-Disposition: attachment; filename="report.pdf"
+Content-Transfer-Encoding: base64
+
+Z29sZGVuLXBkZi1jb250ZW50
+
+--fixture-001--

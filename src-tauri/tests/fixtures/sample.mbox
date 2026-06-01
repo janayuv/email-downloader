@@ -1,0 +1,36 @@
+From alice@fixtures.test Mon Jan 01 10:00:00 2024
+MIME-Version: 1.0
+Message-ID: <mbox-001@fixtures.test>
+From: Alice Test <alice@fixtures.test>
+To: Bob Test <bob@fixtures.test>
+Date: Mon, 01 Jan 2024 10:00:00 +0000
+Subject: First mbox message
+Content-Type: text/plain; charset=utf-8
+
+First message body. No attachments.
+
+From bob@fixtures.test Mon Jan 01 11:00:00 2024
+MIME-Version: 1.0
+Message-ID: <mbox-002@fixtures.test>
+From: Bob Test <bob@fixtures.test>
+To: Alice Test <alice@fixtures.test>
+Date: Mon, 01 Jan 2024 11:00:00 +0000
+Subject: Second mbox message with attachment
+Content-Type: multipart/mixed; boundary="mbox-boundary-002"
+
+--mbox-boundary-002
+Content-Type: text/plain; charset=utf-8
+
+Second message body.
+>From this line tests mboxrd quoting reversal.
+Normal line.
+
+--mbox-boundary-002
+Content-Type: application/pdf; name="mbox_report.pdf"
+Content-Disposition: attachment; filename="mbox_report.pdf"
+Content-Transfer-Encoding: base64
+
+Z29sZGVuLW1ib3gtY29udGVudA==
+
+--mbox-boundary-002--
+
