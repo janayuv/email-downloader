@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, Trash, FolderOpen } from "lucide-react";
+import { Save, Trash, FolderOpen, RefreshCw, CheckCircle2, Download, AlertTriangle } from "lucide-react";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { api } from "@/lib/ipc";
 import type { AppSettings, RetentionStats } from "@/lib/types";
 import { useAppStore } from "@/stores/appStore";
@@ -11,12 +12,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatBytes } from "@/lib/utils";
 
+const APP_VERSION = "0.1.0";
+
+type UpdateState =
+  | { kind: "idle" }
+  | { kind: "checking" }
+  | { kind: "up-to-date" }
+  | { kind: "available"; update: Update }
+  | { kind: "downloading"; progress: number }
+  | { kind: "ready" }
+  | { kind: "error"; message: string };
+
 export function SettingsPage() {
   const qc = useQueryClient();
   const setTheme = useAppStore((s) => s.setTheme);
   const { data } = useQuery({ queryKey: ["settings"], queryFn: api.getSettings });
   const [form, setForm] = useState<AppSettings | null>(null);
   const [stats, setStats] = useState<RetentionStats | null>(null);
+  const [updateState, setUpdateState] = useState<UpdateState>({ kind: "idle" });
 
   useEffect(() => {
     if (data) setForm(data);
@@ -31,6 +44,44 @@ export function SettingsPage() {
     onSuccess: (p) => p && form && setForm({ ...form, default_destination: p }),
   });
   const retention = useMutation({ mutationFn: api.runRetention, onSuccess: setStats });
+
+  async function handleCheckUpdate() {
+    setUpdateState({ kind: "checking" });
+    try {
+      const update = await check();
+      if (update) {
+        setUpdateState({ kind: "available", update });
+      } else {
+        setUpdateState({ kind: "up-to-date" });
+      }
+    } catch (e) {
+      setUpdateState({ kind: "error", message: String(e) });
+    }
+  }
+
+  async function handleInstallUpdate() {
+    if (updateState.kind !== "available") return;
+    const { update } = updateState;
+    try {
+      let downloaded = 0;
+      let total = 0;
+      setUpdateState({ kind: "downloading", progress: 0 });
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          total = event.data.contentLength ?? 0;
+        } else if (event.event === "Progress") {
+          downloaded += event.data.chunkLength;
+          const pct = total > 0 ? Math.round((downloaded / total) * 100) : 0;
+          setUpdateState({ kind: "downloading", progress: pct });
+        } else if (event.event === "Finished") {
+          setUpdateState({ kind: "ready" });
+        }
+      });
+      setUpdateState({ kind: "ready" });
+    } catch (e) {
+      setUpdateState({ kind: "error", message: String(e) });
+    }
+  }
 
   if (!form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
@@ -139,6 +190,87 @@ export function SettingsPage() {
             <div className="text-sm text-muted-foreground">
               Removed {stats.logs_deleted} logs, {stats.reports_deleted} reports,{" "}
               {stats.blobs_deleted} orphan blobs — reclaimed {formatBytes(stats.bytes_reclaimed)}.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Application Updates ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Application Updates</CardTitle>
+          <CardDescription>
+            Current version: <span className="font-mono font-semibold">v{APP_VERSION}</span>
+            {" · "}Updates are pulled from GitHub Releases and verified with a secure signature.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {updateState.kind === "idle" || updateState.kind === "error" ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleCheckUpdate}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Check for Updates
+              </Button>
+              {updateState.kind === "error" && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {updateState.message}
+                </div>
+              )}
+            </>
+          ) : updateState.kind === "checking" ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Checking for updates…
+            </div>
+          ) : updateState.kind === "up-to-date" ? (
+            <div className="flex items-center gap-2 text-sm text-emerald-600">
+              <CheckCircle2 className="h-4 w-4" />
+              You're on the latest version (v{APP_VERSION}).
+              <Button variant="ghost" size="sm" onClick={() => setUpdateState({ kind: "idle" })}>
+                Check again
+              </Button>
+            </div>
+          ) : updateState.kind === "available" ? (
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                <div className="font-semibold">
+                  Update available: v{updateState.update.version}
+                </div>
+                {updateState.update.body && (
+                  <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                    {updateState.update.body}
+                  </p>
+                )}
+              </div>
+              <Button onClick={handleInstallUpdate}>
+                <Download className="h-4 w-4" />
+                Download &amp; Install
+              </Button>
+            </div>
+          ) : updateState.kind === "downloading" ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Download className="h-4 w-4 animate-bounce" />
+                Downloading update{updateState.progress > 0 ? ` (${updateState.progress}%)` : "…"}
+              </div>
+              {updateState.progress > 0 && (
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${updateState.progress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            /* kind === "ready" */
+            <div className="flex items-center gap-2 text-sm text-emerald-600">
+              <CheckCircle2 className="h-4 w-4" />
+              Update installed — please restart the app to apply it.
             </div>
           )}
         </CardContent>

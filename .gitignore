@@ -37,3 +37,9 @@ src-tauri/gen/
 .env
 .env.*
 !.env.example
+
+# Tauri updater signing key files — NEVER commit (public key is in tauri.conf.json)
+.tauri_private_key
+.tauri_private_key.pub
+src-tauri/.tauri_private_key
+src-tauri/.tauri_private_key.pub
